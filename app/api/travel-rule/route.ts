@@ -5,8 +5,19 @@ import { contracts } from '@/lib/contracts'
 
 // Travel Rule (FATF Recommendation 16) compliance record generator — NOT a
 // real VASP-to-VASP transfer network. See docs/changes/20260807_TravelRule合規紀錄.md
+// Threshold is Admin-configurable via /admin/thresholds — see
+// docs/changes/20260808_TravelRule門檻可調整.md
 
-const TRAVEL_RULE_THRESHOLD_USD = 1000
+const DEFAULT_TRAVEL_RULE_THRESHOLD_USD = 1000
+
+async function getTravelRuleThreshold(supabase: ReturnType<typeof createAdminClient>): Promise<number> {
+  const { data, error } = await supabase.from('thresholds').select('travel_rule_threshold_usd').eq('id', 1).single()
+  if (error || data == null) {
+    console.error('[API] travel-rule: falling back to default threshold —', error)
+    return DEFAULT_TRAVEL_RULE_THRESHOLD_USD
+  }
+  return Number(data.travel_rule_threshold_usd)
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,8 +64,11 @@ export async function POST(request: NextRequest) {
     const { data: caseRow } = await supabase.from('cases').select('id').eq('case_number', caseNumber).maybeSingle()
     if (!caseRow) return NextResponse.json({ error: 'Case not found' }, { status: 404 })
 
-    const customerCviVerified = await contracts.isVerified(customerWallet as Address)
-    const applicable = amount >= TRAVEL_RULE_THRESHOLD_USD
+    const [customerCviVerified, threshold] = await Promise.all([
+      contracts.isVerified(customerWallet as Address),
+      getTravelRuleThreshold(supabase),
+    ])
+    const applicable = amount >= threshold
     const compliant = !applicable || customerCviVerified
 
     const { data, error } = await supabase

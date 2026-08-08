@@ -1,23 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { writeAuditLog } from '@/lib/supabase/auditLog'
 import { GlobalThresholds } from '@/types/admin'
 
-// 🔵 MOCK DATA
-const MOCK_THRESHOLDS: GlobalThresholds = {
-  buyerConcentrationLimit: 70,
-  overdueRateRedLine: 2.0,
-  singleBorrowerLimit: 15,
-  updatedAt: new Date().toISOString(),
+interface ThresholdsRow {
+  buyer_concentration_limit: number
+  overdue_rate_red_line: number
+  single_borrower_limit: number
+  travel_rule_threshold_usd: number
+  updated_at: string
+  updated_by: string | null
+}
+
+function toGlobalThresholds(row: ThresholdsRow): GlobalThresholds {
+  return {
+    buyerConcentrationLimit: Number(row.buyer_concentration_limit),
+    overdueRateRedLine: Number(row.overdue_rate_red_line),
+    singleBorrowerLimit: Number(row.single_borrower_limit),
+    travelRuleThresholdUsd: Number(row.travel_rule_threshold_usd),
+    updatedAt: row.updated_at,
+    updatedBy: row.updated_by,
+  }
 }
 
 export async function GET() {
   try {
-    // TODO（Supabase）：替換為：
-    // const supabase = await createClient()
-    // const { data, error } = await supabase.from('thresholds').select('*').single()
-    // if (error) throw error
-    // return NextResponse.json(data)
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from('thresholds')
+      .select('buyer_concentration_limit, overdue_rate_red_line, single_borrower_limit, travel_rule_threshold_usd, updated_at, updated_by')
+      .eq('id', 1)
+      .single()
+    if (error) throw error
 
-    return NextResponse.json(MOCK_THRESHOLDS)
+    return NextResponse.json(toGlobalThresholds(data))
   } catch (error) {
     console.error('[API] admin/thresholds GET error:', error)
     return NextResponse.json(
@@ -27,16 +43,36 @@ export async function GET() {
   }
 }
 
+interface PutThresholdsBody {
+  buyerConcentrationLimit?: number
+  overdueRateRedLine?: number
+  singleBorrowerLimit?: number
+  travelRuleThresholdUsd?: number
+  actorEmail?: string
+}
+
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
-    // TODO（Supabase）：替換為：
-    // const supabase = await createClient()
-    // const { data, error } = await supabase.from('thresholds').update(body).eq('id', 1)
-    // if (error) throw error
+    const body = (await request.json()) as PutThresholdsBody
+    const supabase = createAdminClient()
 
-    // 🔵 MOCK：直接返回更新後的數據
-    return NextResponse.json({ ...MOCK_THRESHOLDS, ...body, updatedAt: new Date().toISOString() })
+    const update: Record<string, unknown> = { updated_by: body.actorEmail ?? null }
+    if (body.buyerConcentrationLimit !== undefined) update.buyer_concentration_limit = body.buyerConcentrationLimit
+    if (body.overdueRateRedLine !== undefined) update.overdue_rate_red_line = body.overdueRateRedLine
+    if (body.singleBorrowerLimit !== undefined) update.single_borrower_limit = body.singleBorrowerLimit
+    if (body.travelRuleThresholdUsd !== undefined) update.travel_rule_threshold_usd = body.travelRuleThresholdUsd
+
+    const { data, error } = await supabase
+      .from('thresholds')
+      .update(update)
+      .eq('id', 1)
+      .select('buyer_concentration_limit, overdue_rate_red_line, single_borrower_limit, travel_rule_threshold_usd, updated_at, updated_by')
+      .single()
+    if (error) throw error
+
+    await writeAuditLog(supabase, body.actorEmail, 'UPDATE_THRESHOLDS', 'thresholds/1', 'Updated global threshold settings')
+
+    return NextResponse.json(toGlobalThresholds(data))
   } catch (error) {
     console.error('[API] admin/thresholds PUT error:', error)
     return NextResponse.json(

@@ -17,8 +17,10 @@ export interface SystemHealth {
 }
 
 export interface GlobalThresholds {
-  buyerConcentrationLimit: number   // %，預設 70
-  overdueRateRedLine: number        // %，預設 2.0
-  singleBorrowerLimit: number       // 億，預設 15
+  buyerConcentrationLimit: number   // %，預設 40
+  overdueRateRedLine: number        // %，預設 5
+  singleBorrowerLimit: number       // 金額，預設 5,000,000
+  travelRuleThresholdUsd: number    // Travel Rule 適用門檻(USD)，預設 1000
   updatedAt: string
+  updatedBy: string | null
 }
