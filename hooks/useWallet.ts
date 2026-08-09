@@ -18,6 +18,22 @@ export interface AtokenBalance {
   symbol: string
 }
 
+// decimals/symbol are contract constants — fetch once and reuse across
+// every wallet switch instead of re-querying them every time. Cuts the
+// per-switch RPC load from 3 calls down to 1 (just balanceOf).
+let atokenMetaCache: { decimals: number; symbol: string } | null = null
+async function getAtokenMeta() {
+  if (atokenMetaCache) return atokenMetaCache
+  const [decimals, symbol] = await Promise.all([
+    publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'decimals' }),
+    publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'symbol' }),
+  ])
+  atokenMetaCache = { decimals, symbol }
+  return atokenMetaCache
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 // Thin wrapper around wagmi so pages don't each pull in 4-5 separate hooks.
 // Only meaningful in real mode — mock mode never needs a connected wallet.
 export function useWallet() {
@@ -38,19 +54,28 @@ export function useWallet() {
   useEffect(() => {
     if (!address || !isConnected || !isRealContractMode || isWrongNetwork) { setAtokenBalance(null); return }
     let cancelled = false
-    Promise.all([
-      publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'balanceOf', args: [address] }),
-      publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'decimals' }),
-      publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'symbol' }),
-    ])
-      .then(([value, decimals, symbol]) => {
+
+    const fetchBalance = async (retriesLeft: number): Promise<void> => {
+      try {
+        const [value, meta] = await Promise.all([
+          publicClient.readContract({ address: contractAddresses.stablecoin, abi: erc20BalanceAbi, functionName: 'balanceOf', args: [address] }),
+          getAtokenMeta(),
+        ])
         if (cancelled) return
-        setAtokenBalance({ formatted: formatUnits(value, decimals), symbol })
-      })
-      .catch((error) => {
+        setAtokenBalance({ formatted: formatUnits(value, meta.decimals), symbol: meta.symbol })
+      } catch (error) {
+        if (cancelled) return
+        if (retriesLeft > 0) {
+          await sleep(800)
+          if (!cancelled) await fetchBalance(retriesLeft - 1)
+          return
+        }
         console.error('[useWallet] A-Token balance read failed:', error)
-        if (!cancelled) setAtokenBalance(null)
-      })
+        setAtokenBalance(null)
+      }
+    }
+
+    fetchBalance(1)
     return () => { cancelled = true }
   }, [address, isConnected, isWrongNetwork])
 

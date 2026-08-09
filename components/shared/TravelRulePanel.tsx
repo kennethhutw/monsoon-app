@@ -23,7 +23,10 @@ interface TravelRuleRecord {
 
 const EVENT_LABEL: Record<string, string> = { disbursement: 'Disbursement', repayment: 'Repayment' }
 
-export function TravelRulePanel({ caseNumber }: { caseNumber: string }) {
+// refreshKey: bump this from the parent after an action that might create a
+// new record (e.g. disburse) — this component only fetches on mount/caseNumber
+// change otherwise, so a new record wouldn't appear until a manual reload.
+export function TravelRulePanel({ caseNumber, refreshKey }: { caseNumber: string; refreshKey?: number }) {
   const [records, setRecords] = useState<TravelRuleRecord[] | null>(null)
 
   useEffect(() => {
@@ -31,7 +34,7 @@ export function TravelRulePanel({ caseNumber }: { caseNumber: string }) {
       .then((r) => r.json())
       .then((d) => setRecords(Array.isArray(d) ? d : []))
       .catch(() => setRecords([]))
-  }, [caseNumber])
+  }, [caseNumber, refreshKey])
 
   if (!records || records.length === 0) return null
 

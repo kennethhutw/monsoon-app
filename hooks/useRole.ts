@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { AppUser } from '@/types/user'
+import { AppUser, UserRole } from '@/types/user'
 
 // TODO（Supabase Auth）：替換為：
 // const { data: { user } } = await supabase.auth.getUser()

@@ -71,7 +71,7 @@ function HashField({ label, value, href }: { label: string; value: string; href?
 
 const ACTIONABLE_STAGES: CaseStage[] = ['submitted', 'ai_review', 'credit_committee']
 
-function RealModeActions({ c, onUpdated }: { c: FinanceCase; onUpdated: (patch: Partial<FinanceCase>) => void }) {
+function RealModeActions({ c, onUpdated, onTravelRuleChange }: { c: FinanceCase; onUpdated: (patch: Partial<FinanceCase>) => void; onTravelRuleChange?: () => void }) {
   const { isConnected, isWrongNetwork, walletClient } = useWallet()
   const [onChainStatus, setOnChainStatus] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -170,7 +170,9 @@ function RealModeActions({ c, onUpdated }: { c: FinanceCase; onUpdated: (patch: 
             caseNumber: c.id, eventType: 'disbursement', amount: c.amount, txHash,
             customerRole: 'exporter', customerWallet: c.exporterWallet, customerName: c.companyName,
           }),
-        }).catch((error) => console.error('[travel-rule] disbursement record failed:', error))
+        })
+          .catch((error) => console.error('[travel-rule] disbursement record failed:', error))
+          .finally(() => onTravelRuleChange?.())
       }
       toastTxSuccess('Funds disbursed', txHash, `Advance sent to the exporter for case #${c.financingCaseId}`)
       await load()
@@ -217,6 +219,7 @@ function RealModeActions({ c, onUpdated }: { c: FinanceCase; onUpdated: (patch: 
 export default function CaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [c, setC] = useState<FinanceCase | null>(null)
+  const [travelRuleRefreshKey, setTravelRuleRefreshKey] = useState(0)
   const [stage, setStage] = useState<CaseStage | null>(null)
   const [aiText, setAiText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
@@ -347,7 +350,7 @@ export default function CaseDetailPage() {
           </div>
 
           {isRealContractMode ? (
-            <RealModeActions c={c} onUpdated={(patch) => setC(prev => prev ? { ...prev, ...patch } : prev)} />
+            <RealModeActions c={c} onUpdated={(patch) => setC(prev => prev ? { ...prev, ...patch } : prev)} onTravelRuleChange={() => setTravelRuleRefreshKey(k => k + 1)} />
           ) : canAction && (
             <div className="bg-surface rounded-xl border border-border-subtle shadow-card p-6">
               <h2 className="text-title-lg font-bold mb-4">Review Actions</h2>
@@ -397,7 +400,7 @@ export default function CaseDetailPage() {
             </div>
           )}
 
-          {isRealContractMode && <TravelRulePanel caseNumber={c.id} />}
+          {isRealContractMode && <TravelRulePanel caseNumber={c.id} refreshKey={travelRuleRefreshKey} />}
         </div>
 
         <div className="lg:col-span-4 space-y-6">
