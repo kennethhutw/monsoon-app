@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Toaster } from 'sonner'
 import { Web3Provider } from '@/components/providers/Web3Provider'
 import '../src/app/globals.css'
@@ -34,6 +35,7 @@ export default function RootLayout({
           {children}
           <Toaster position="top-right" richColors />
         </Web3Provider>
+        <GoogleAnalytics gaId="G-405139335" />
       </body>
     </html>
   )
