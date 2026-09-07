@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeAuditLog } from '@/lib/supabase/auditLog'
+import { requireRole } from '@/lib/auth/requireRole'
 import type { AdminUserRow, UserRole } from '@/types/user'
 
 // See docs/changes/20260806_使用者管理真實化.md、20260806_Admin控制台分層架構.md
@@ -16,7 +17,9 @@ interface RelatedCase {
   roleInCase: 'exporter' | 'buyer'
 }
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const { id } = await params
     const supabase = createAdminClient()
@@ -83,6 +86,9 @@ interface PatchUserBody {
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
+  const actorEmail = auth.session.email
   try {
     const { id } = await params
     const body = (await request.json()) as PatchUserBody
@@ -132,7 +138,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const detail = body.password !== undefined
       ? `Reset password for ${existing.email}`
       : `Updated ${existing.email}${changedFields ? `: ${changedFields}` : ''}`
-    await writeAuditLog(supabase, body.actorEmail, action, `users/${id}`, detail)
+    await writeAuditLog(supabase, actorEmail, action, `users/${id}`, detail)
 
     const result: AdminUserRow = {
       id: data.id,

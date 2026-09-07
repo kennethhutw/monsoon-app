@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeAuditLog } from '@/lib/supabase/auditLog'
+import { requireRole } from '@/lib/auth/requireRole'
 import { GlobalThresholds } from '@/types/admin'
 
 interface ThresholdsRow {
@@ -23,7 +24,10 @@ function toGlobalThresholds(row: ThresholdsRow): GlobalThresholds {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Matches the table's own RLS intent: bank + admin can read, only admin can write.
+  const auth = requireRole(request, ['admin', 'bank'])
+  if (auth.error) return auth.error
   try {
     const supabase = createAdminClient()
     const { data, error } = await supabase
@@ -52,11 +56,13 @@ interface PutThresholdsBody {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const body = (await request.json()) as PutThresholdsBody
     const supabase = createAdminClient()
 
-    const update: Record<string, unknown> = { updated_by: body.actorEmail ?? null }
+    const update: Record<string, unknown> = { updated_by: auth.session.email }
     if (body.buyerConcentrationLimit !== undefined) update.buyer_concentration_limit = body.buyerConcentrationLimit
     if (body.overdueRateRedLine !== undefined) update.overdue_rate_red_line = body.overdueRateRedLine
     if (body.singleBorrowerLimit !== undefined) update.single_borrower_limit = body.singleBorrowerLimit
@@ -70,7 +76,7 @@ export async function PUT(request: NextRequest) {
       .single()
     if (error) throw error
 
-    await writeAuditLog(supabase, body.actorEmail, 'UPDATE_THRESHOLDS', 'thresholds/1', 'Updated global threshold settings')
+    await writeAuditLog(supabase, auth.session.email, 'UPDATE_THRESHOLDS', 'thresholds/1', 'Updated global threshold settings')
 
     return NextResponse.json(toGlobalThresholds(data))
   } catch (error) {

@@ -9,7 +9,8 @@ export interface AuditLog {
 }
 
 export interface SystemHealth {
-  sepoliaConnected: boolean
+  chainConnected: boolean
+  rpcProvider: 'default' | 'alchemy'
   claudeApiStatus: 'ok' | 'degraded' | 'down'
   claudeApiLatencyMs?: number
   lastUpdated: string

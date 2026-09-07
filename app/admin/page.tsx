@@ -260,9 +260,9 @@ export default function AdminPage() {
             </div>
           )}
           {!health ? <Skeleton className="h-20 rounded-xl" /> : (
-            <div className={`rounded-xl border p-4 flex items-center justify-between ${health.sepoliaConnected ? 'bg-risk-low/10 border-risk-low/30' : 'bg-risk-medium/10 border-risk-medium/30'}`}>
-              <p className="text-body-md font-semibold text-ink">Monad Network — {health.sepoliaConnected ? 'Connected' : 'Mock Mode'}</p>
-              {health.sepoliaConnected ? <CheckCircle2 size={20} className="text-risk-low" /> : <XCircle size={20} className="text-risk-medium" />}
+            <div className={`rounded-xl border p-4 flex items-center justify-between ${health.chainConnected ? 'bg-risk-low/10 border-risk-low/30' : 'bg-risk-medium/10 border-risk-medium/30'}`}>
+              <p className="text-body-md font-semibold text-ink">Monad Network — {health.chainConnected ? (health.rpcProvider === 'alchemy' ? 'Connected via Alchemy' : 'Connected') : 'Unreachable'}</p>
+              {health.chainConnected ? <CheckCircle2 size={20} className="text-risk-low" /> : <XCircle size={20} className="text-risk-medium" />}
             </div>
           )}
         </div>

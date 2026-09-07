@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireRole } from '@/lib/auth/requireRole'
 
 // See docs/changes/20260806_CVA資格檢查與申請.md
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const supabase = createAdminClient()
     const { data, error } = await supabase

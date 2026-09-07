@@ -12,11 +12,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const { address } = await params
 
     if (!isRealMode) {
-      return NextResponse.json({ eligible: true, code: 4, message: 'Mock mode — always eligible.' })
+      return NextResponse.json({ eligible: true, mock: true, code: 4, message: 'Mock mode — always eligible. This is not a real Cleanverse verification.' })
     }
 
     const result = await verifyApass('monad', contractAddresses.stablecoin, address)
-    return NextResponse.json({ eligible: result.code === 4, code: result.code, message: result.message })
+    return NextResponse.json({ eligible: result.code === 4, mock: false, code: result.code, message: result.message })
   } catch (error) {
     console.error('[API] cva-eligibility error:', error)
     const message = error instanceof Error ? error.message : 'Eligibility check failed'

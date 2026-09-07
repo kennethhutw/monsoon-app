@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireRole } from '@/lib/auth/requireRole'
 import { AuditLog } from '@/types/admin'
 
 // Real audit_log rows — /admin/users' create/edit/reset-password actions
@@ -16,7 +17,9 @@ interface AuditLogRow {
   timestamp: string
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const supabase = createAdminClient()
     const { data, error } = await supabase

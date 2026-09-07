@@ -40,6 +40,7 @@ export function useRole() {
   const logout = () => {
     sessionStorage.removeItem('monsoon_user')
     setUser(null)
+    fetch('/api/auth/logout', { method: 'POST' }).catch((error) => console.error('[useRole] logout failed:', error))
   }
 
   return {

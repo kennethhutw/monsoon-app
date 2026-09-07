@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeAuditLog } from '@/lib/supabase/auditLog'
+import { requireRole } from '@/lib/auth/requireRole'
 import type { AdminUserRow, UserRole } from '@/types/user'
 
 // See docs/changes/20260806_使用者管理真實化.md
@@ -30,7 +31,9 @@ function mapRow(row: UserRow, nftCount: number): AdminUserRow {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const supabase = createAdminClient()
     const { data: users, error } = await supabase
@@ -78,6 +81,8 @@ interface CreateUserBody {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
     const body = (await request.json()) as Partial<CreateUserBody>
     const { email, password, role, name, organization } = body
@@ -104,7 +109,7 @@ export async function POST(request: NextRequest) {
       .single()
     if (error) throw error
 
-    await writeAuditLog(supabase, body.actorEmail, 'CREATE_USER', `users/${data.id}`, `Created ${email} (${role})`)
+    await writeAuditLog(supabase, auth.session.email, 'CREATE_USER', `users/${data.id}`, `Created ${email} (${role})`)
 
     return NextResponse.json(mapRow(data as UserRow, 0))
   } catch (error) {

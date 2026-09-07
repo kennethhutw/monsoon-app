@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createSessionToken, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/lib/auth/session'
 
 // Server-side credential check against public.users. Previously this
 // comparison ran client-side against a hardcoded array (data/mockUsers.ts),
@@ -26,7 +27,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    return NextResponse.json(user)
+    const token = createSessionToken({ id: user.id, email: user.email, role: user.role })
+    const response = NextResponse.json(user)
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    })
+    return response
   } catch (error) {
     console.error('[API] auth/login error:', error)
     return NextResponse.json({ error: 'Login failed', code: 'LOGIN_ERROR' }, { status: 500 })

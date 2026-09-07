@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Address } from 'viem'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeAuditLog } from '@/lib/supabase/auditLog'
+import { requireRole } from '@/lib/auth/requireRole'
 import { contracts, RoleType, type RoleTypeValue } from '@/lib/contracts'
 import { generateApass, type CleanverseChain } from '@/lib/cleanverse/apass'
 
@@ -26,10 +27,12 @@ function toCustomerId(wallet: string): string {
 interface PatchBody {
   action: 'approve' | 'reject'
   reason?: string
-  actorEmail?: string
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
+  const actorEmail = auth.session.email // server-verified, not the client-supplied body field
   const supabase = createAdminClient()
   try {
     const { id } = await params
@@ -52,12 +55,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.action === 'reject') {
       const { data, error } = await supabase
         .from('cvi_applications')
-        .update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: body.actorEmail, rejection_reason: body.reason ?? null })
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: actorEmail, rejection_reason: body.reason ?? null })
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
-      await writeAuditLog(supabase, body.actorEmail, 'REJECT_CVI_APPLICATION', `cvi_applications/${id}`, `Rejected ${application.wallet_address} (${application.role})`)
+      await writeAuditLog(supabase, actorEmail, 'REJECT_CVI_APPLICATION', `cvi_applications/${id}`, `Rejected ${application.wallet_address} (${application.role})`)
       return NextResponse.json(data)
     }
 
@@ -88,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .update({
         status: 'approved',
         reviewed_at: new Date().toISOString(),
-        reviewed_by: body.actorEmail,
+        reviewed_by: actorEmail,
         cv_record_id: realCviRecordId ?? null,
         chain_tx_hash: result.txHash,
       })
@@ -97,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .single()
     if (error) throw error
 
-    await writeAuditLog(supabase, body.actorEmail, 'APPROVE_CVI_APPLICATION', `cvi_applications/${id}`, `Approved ${application.wallet_address} (${application.role}) — ${result.txHash}`)
+    await writeAuditLog(supabase, actorEmail, 'APPROVE_CVI_APPLICATION', `cvi_applications/${id}`, `Approved ${application.wallet_address} (${application.role}) — ${result.txHash}`)
 
     return NextResponse.json(data)
   } catch (error) {

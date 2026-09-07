@@ -14,7 +14,7 @@ export default function AdminHealthPage() {
 
   const items = health ? [
     { label: 'Claude API', status: health.claudeApiStatus === 'ok', detail: health.claudeApiLatencyMs ? `${health.claudeApiLatencyMs}ms` : undefined },
-    { label: 'Monad Network', status: health.sepoliaConnected, detail: 'Mock Mode' },
+    { label: 'Monad Network', status: health.chainConnected, detail: health.chainConnected ? (health.rpcProvider === 'alchemy' ? 'Connected via Alchemy' : 'Connected') : 'Unreachable' },
     { label: '24h Error Count',  status: health.errors24h === 0, detail: `${health.errors24h} errors` },
   ] : []
 

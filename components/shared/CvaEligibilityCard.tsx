@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Coins, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
+import { Coins, CheckCircle2, AlertTriangle, Clock, FlaskConical } from 'lucide-react'
 
 // Live A-Token (CVA) transfer/receive eligibility check + self-service CVI
 // application (admin review required before it's actually granted).
@@ -11,6 +11,7 @@ import { Coins, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 
 interface Eligibility {
   eligible: boolean
+  mock: boolean
   message: string
 }
 
@@ -77,12 +78,19 @@ export function CvaEligibilityCard({ address, role }: { address: string; role: '
         <h3 className="text-title-lg font-bold">A-Token Settlement Eligibility (CVA)</h3>
       </div>
 
-      <div className={`flex items-center gap-2 p-3 rounded-lg ${eligibility?.eligible ? 'bg-risk-low/10 text-risk-low' : 'bg-risk-medium/10 text-risk-medium'}`}>
-        {eligibility?.eligible ? <CheckCircle2 size={16} className="shrink-0" /> : <AlertTriangle size={16} className="shrink-0" />}
-        <span className="text-body-md">
-          {eligibility?.eligible ? 'Eligible to receive/transfer CVA settlement funds' : (eligibility?.message || 'Not eligible')}
-        </span>
-      </div>
+      {eligibility?.mock ? (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-risk-medium/10 text-risk-medium">
+          <FlaskConical size={16} className="shrink-0" />
+          <span className="text-body-md">Demo Mode — this is not a real Cleanverse verification. Real-mode configuration is missing.</span>
+        </div>
+      ) : (
+        <div className={`flex items-center gap-2 p-3 rounded-lg ${eligibility?.eligible ? 'bg-risk-low/10 text-risk-low' : 'bg-risk-medium/10 text-risk-medium'}`}>
+          {eligibility?.eligible ? <CheckCircle2 size={16} className="shrink-0" /> : <AlertTriangle size={16} className="shrink-0" />}
+          <span className="text-body-md">
+            {eligibility?.eligible ? 'Eligible to receive/transfer CVA settlement funds' : (eligibility?.message || 'Not eligible')}
+          </span>
+        </div>
+      )}
 
       {!eligibility?.eligible && (
         <div className="mt-4">

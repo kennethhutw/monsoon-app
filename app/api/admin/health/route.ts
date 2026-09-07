@@ -1,16 +1,26 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { SystemHealth } from '@/types/admin'
+import { getServerPublicClient, getRpcProvider } from '@/lib/contracts/serverRpc'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ['admin'])
+  if (auth.error) return auth.error
   try {
-    // TODO（正式版）：實際呼叫 Sepolia RPC 與 Claude API 健康檢查
-    // 目前回傳 mock 狀態
+    const rpcProvider = getRpcProvider()
+    let chainConnected = false
+    try {
+      await getServerPublicClient().getBlockNumber()
+      chainConnected = true
+    } catch (error) {
+      console.error('[API] admin/health chain connectivity check failed:', error)
+    }
 
-    // 🔵 MOCK DATA：
+    // Claude API status: presence check only, not a live ping (see docs/changes/20260905_Alchemy即時監控.md)
     const health: SystemHealth = {
-      sepoliaConnected: false,        // mock 模式不連接真實鏈
+      chainConnected,
+      rpcProvider,
       claudeApiStatus: process.env.ANTHROPIC_API_KEY ? 'ok' : 'down',
-      claudeApiLatencyMs: 320,
       lastUpdated: new Date().toISOString(),
       errors24h: 0,
     }
