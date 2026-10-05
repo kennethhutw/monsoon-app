@@ -4,7 +4,7 @@ import type { AiClient } from './types'
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4'
 
 export const openrouterClient: AiClient = {
-  async complete({ system, message, maxTokens }) {
+  async complete({ system, message, maxTokens, model }) {
     const apiKey = process.env.OPENROUTER_API_KEY
     if (!apiKey) {
       throw new Error('AI_PROVIDER is "openrouter" but OPENROUTER_API_KEY is not set')
@@ -17,7 +17,7 @@ export const openrouterClient: AiClient = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL,
+        model: model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL,
         max_tokens: maxTokens,
         messages: [
           { role: 'system', content: system },

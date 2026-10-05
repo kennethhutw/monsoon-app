@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
+import { AiAssessmentPanel } from '@/components/shared/AiAssessmentPanel'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -56,28 +57,21 @@ function CaseDetailPanel({
 }) {
   const [c, setC]               = useState<FinanceCase | null>(null)
   const [stage, setStage]       = useState<CaseStage | null>(null)
-  const [aiText, setAiText]     = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    setC(null); setStage(null); setAiText(''); setNotFound(false)
-    setDataLoading(true); setAiLoading(true)
+    setC(null); setStage(null); setNotFound(false)
+    setDataLoading(true)
     fetch(`/api/mock/cases/${caseId}`)
       .then(r => r.json())
       .then(data => {
-        if (data.error) { setNotFound(true); setDataLoading(false); setAiLoading(false); return }
+        if (data.error) { setNotFound(true); setDataLoading(false); return }
         setC(data); setStage(data.stage)
         setDataLoading(false)
-        return fetch('/api/ai/case', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ caseData: data }),
-        }).then(r => r.json()).then(d => { setAiText(d.evaluation); setAiLoading(false) })
       })
-      .catch(() => { setNotFound(true); setDataLoading(false); setAiLoading(false) })
+      .catch(() => { setNotFound(true); setDataLoading(false) })
   }, [caseId])
 
   const updateStage = async (newStage: CaseStage) => {
@@ -206,13 +200,7 @@ function CaseDetailPanel({
                 <h3 className="text-title-lg font-bold">AI Assessment</h3>
               </div>
               <div className="p-5">
-                {aiLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-3.5 w-full" /><Skeleton className="h-3.5 w-5/6" /><Skeleton className="h-3.5 w-4/6" />
-                  </div>
-                ) : (
-                  <p className="text-body-md text-on-surface-variant leading-relaxed whitespace-pre-wrap italic">{aiText}</p>
-                )}
+                <AiAssessmentPanel key={c.id} caseNumber={c.id} caseData={c} />
               </div>
             </div>
 

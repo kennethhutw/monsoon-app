@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ConnectWalletButton } from '@/components/shared/ConnectWalletButton'
 import { CaseActivityTimeline } from '@/components/shared/CaseActivityTimeline'
 import { NewsScanPanel } from '@/components/shared/NewsScanPanel'
+import { AiAssessmentPanel } from '@/components/shared/AiAssessmentPanel'
 import { WalletSecurityCheck, type WalletSecurityResult } from '@/components/shared/WalletSecurityCheck'
 import { TravelRulePanel } from '@/components/shared/TravelRulePanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -221,8 +222,6 @@ export default function CaseDetailPage() {
   const [c, setC] = useState<FinanceCase | null>(null)
   const [travelRuleRefreshKey, setTravelRuleRefreshKey] = useState(0)
   const [stage, setStage] = useState<CaseStage | null>(null)
-  const [aiText, setAiText] = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
@@ -233,15 +232,8 @@ export default function CaseDetailPage() {
         if (data.error) { setNotFound(true); return }
         setC(data)
         setStage(data.stage)
-        setAiLoading(true)
-        return fetch('/api/ai/case', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ caseData: data }),
-        }).then(r => r.json()).then(d => setAiText(d.evaluation))
       })
       .catch(() => setNotFound(true))
-      .finally(() => setAiLoading(false))
   }, [id])
 
   const updateStage = async (newStage: CaseStage) => {
@@ -337,11 +329,7 @@ export default function CaseDetailPage() {
                 </TabsContent>
               )}
               <TabsContent value="assessment" className="p-6 pt-4">
-                {aiLoading ? (
-                  <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /></div>
-                ) : (
-                  <p className="text-body-md text-on-surface-variant leading-relaxed whitespace-pre-wrap italic">{aiText}</p>
-                )}
+                <AiAssessmentPanel caseNumber={c.id} caseData={c} />
               </TabsContent>
               <TabsContent value="news" className="p-6 pt-4">
                 <NewsScanPanel caseNumber={c.id} />

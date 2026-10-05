@@ -4,6 +4,7 @@ export interface AiCompleteParams {
   system: string
   message: string
   maxTokens: number
+  model?: string
 }
 
 export interface AiClient {

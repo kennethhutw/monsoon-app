@@ -51,6 +51,18 @@ interface CleanverseEnvelope<T> {
   data: T
 }
 
+// Gateway-level failures (e.g. a 403 "Forbidden." when api-id is missing or
+// revoked) come back as plain text, not the JSON envelope — surface them
+// with the HTTP status instead of an opaque JSON.parse error.
+async function parseEnvelope<T>(res: Response): Promise<CleanverseEnvelope<T>> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as CleanverseEnvelope<T>
+  } catch {
+    throw new CleanverseApiError(`HTTP_${res.status}`, text.slice(0, 200) || 'non-JSON response')
+  }
+}
+
 function baseUrl(): string {
   return process.env.CLEANVERSE_BASE_URL ?? 'https://uatapi.cleanverse.com/api/cooperate'
 }
@@ -72,7 +84,7 @@ export async function postEncrypted<TResponse>(path: string, plaintextBody: unkn
     headers: headers(),
     body: JSON.stringify(encryptBody(plaintextBody)),
   })
-  const json = (await res.json()) as CleanverseEnvelope<unknown>
+  const json = await parseEnvelope<unknown>(res)
   if (json.code !== '0000') throw new CleanverseApiError(json.code, json.message)
   // Some endpoints' example responses return plaintext data; guard in case a
   // given deployment does return an encrypted string per the general spec.
@@ -93,7 +105,7 @@ export async function postPlain<TResponse>(path: string, body: unknown): Promise
     headers: headers(),
     body: JSON.stringify(body),
   })
-  const json = (await res.json()) as CleanverseEnvelope<TResponse>
+  const json = await parseEnvelope<TResponse>(res)
   if (json.code !== '0000') throw new CleanverseApiError(json.code, json.message)
   return json.data
 }
@@ -104,7 +116,7 @@ export async function getPlain<TResponse>(path: string): Promise<TResponse> {
     method: 'GET',
     headers: headers(),
   })
-  const json = (await res.json()) as CleanverseEnvelope<TResponse>
+  const json = await parseEnvelope<TResponse>(res)
   if (json.code !== '0000') throw new CleanverseApiError(json.code, json.message)
   return json.data
 }
